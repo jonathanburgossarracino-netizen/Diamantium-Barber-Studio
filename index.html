@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diamantium Barber Studio</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <main class="container">
+        <!-- Header con Logo -->
+        <header class="header">
+            <img src="assets/logo.jpg" alt="Diamantium Barber Studio Logo" class="logo">
+            <h1>Diamantium Barber Studio</h1>
+            <p id="subtitulo">Reserva tu cita en segundos</p>
+        </header>
+
+        <!-- 1. Formulario de Registro / Acceso -->
+        <section id="step-register" class="card">
+            <h2>Crear Cuenta / Acceso</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="nombre">Nombre completo</label>
+                    <input type="text" id="nombre" placeholder="Ej. Juan Pérez" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="telefono">Número de WhatsApp (10 dígitos)</label>
+                    <input type="tel" id="telefono" placeholder="Ej. 1234567890" maxlength="10" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pin">PIN de acceso (4 dígitos)</label>
+                    <input type="password" id="pin" placeholder="****" maxlength="4" required>
+                </div>
+
+                <button type="submit" class="btn-primary">Ingresar / Registrarme</button>
+            </form>
+        </section>
+
+        <!-- 2. Menú Principal del Cliente -->
+        <section id="step-menu" class="card hidden">
+            <h2>Panel de Cliente</h2>
+            <p style="text-align: center; color: #a0a0a0; margin-bottom: 20px;">¿Qué deseas hacer hoy?</p>
+            
+            <div class="menu-options">
+                <button id="btn-menu-nueva" class="btn-primary">📅 Agendar Nueva Cita</button>
+                <button id="btn-menu-historial" class="btn-secondary">📋 Historial de Citas</button>
+                <button id="btn-menu-admin" class="btn-secondary" style="border-color: var(--accent-gold); color: var(--accent-gold);">💈 Panel Administrador (Barbero)</button>
+                <button id="btn-logout" class="btn-secondary" style="margin-top: 10px;">🚪 Cerrar Sesión</button>
+            </div>
+        </section>
+
+        <!-- 3. Selector de Servicios -->
+        <section id="step-services" class="card hidden">
+            <h2>Selecciona un Servicio</h2>
+            <div class="services-list">
+                <label class="service-card">
+                    <input type="radio" name="servicio" value="Corte de Cabello" data-precio="150" checked>
+                    <div class="service-info">
+                        <span class="service-title">Corte Tradicional / Degradado</span>
+                        <span class="service-price">$150 MXN</span>
+                    </div>
+                </label>
+
+                <label class="service-card">
+                    <input type="radio" name="servicio" value="Arreglo de Barba" data-precio="100">
+                    <div class="service-info">
+                        <span class="service-title">Corte / Perfilado de Barba</span>
+                        <span class="service-price">$100 MXN</span>
+                    </div>
+                </label>
+
+                <label class="service-card">
+                    <input type="radio" name="servicio" value="Combo Completo" data-precio="220">
+                    <div class="service-info">
+                        <span class="service-title">Combo Diamantium (Corte + Barba)</span>
+                        <span class="service-price">$220 MXN</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- NUEVO CAMPO: Detalles específicos del corte -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="descripcionCorte">¿Cómo deseas tu corte? (Opcional)</label>
+                <textarea id="descripcionCorte" rows="3" placeholder="Ej. Fade medio en cero, marcar patillas rectas y recortar un poco arriba..."></textarea>
+            </div>
+
+            <button id="btn-next-service" class="btn-primary" style="margin-top: 15px;">Continuar a Fecha y Hora</button>
+            <button id="btn-back-services" class="btn-secondary" style="margin-top: 10px;">Volver al Menú</button>
+        </section>
+
+        <!-- 4. Fecha y Hora -->
+        <section id="step-datetime" class="card hidden">
+            <h2>Selecciona Fecha y Hora</h2>
+            
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="fecha">Día de tu cita</label>
+                <input type="date" id="fecha" required>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="hora">Horarios disponibles</label>
+                <select id="hora" required>
+                    <option value="">-- Selecciona una hora --</option>
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="12:00 PM">12:00 PM</option>
+                    <option value="01:00 PM">01:00 PM</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="05:00 PM">05:00 PM</option>
+                    <option value="06:00 PM">06:00 PM</option>
+                    <option value="07:00 PM">07:00 PM</option>
+                </select>
+            </div>
+
+            <button id="btn-finish" class="btn-primary" style="margin-top: 20px;">Confirmar Reserva</button>
+            <button id="btn-back-datetime" class="btn-secondary" style="margin-top: 10px;">Atrás</button>
+        </section>
+
+        <!-- 5. Historial del Cliente -->
+        <section id="step-history" class="card hidden">
+            <h2>Mis Citas Agendadas</h2>
+            <div id="citas-container" class="history-list"></div>
+            <button id="btn-back-history" class="btn-secondary" style="margin-top: 20px;">Volver al Menú</button>
+        </section>
+
+        <!-- 6. PANEL DE ADMINISTRADOR / BARBERO (PRIVADO) -->
+        <section id="step-admin" class="card hidden">
+            <h2>💈 Agenda y Finanzas</h2>
+            
+            <!-- Resumen de ganancias -->
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <span class="stat-label">Citas del Mes</span>
+                    <span id="stat-citas-mes" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Ingresos del Mes</span>
+                    <span id="stat-ingresos-mes" class="stat-value">$0 MXN</span>
+                </div>
+            </div>
+
+            <h3 style="color: var(--accent-gold); margin-top: 20px; font-size: 1rem;">Citas Agendadas en el Sistema:</h3>
+            <div id="admin-citas-container" class="history-list"></div>
+
+            <button id="btn-back-admin" class="btn-secondary" style="margin-top: 20px;">Volver al Menú</button>
+        </section>
+
+    </main>
+
+    <script src="main.js"></script>
+</body>
+</html>
