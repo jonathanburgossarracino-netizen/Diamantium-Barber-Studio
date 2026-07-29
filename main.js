@@ -218,4 +218,4 @@ function cargarPanelAdmin() {
             <p>✂️ <strong>Corte solicitado:</strong> ${c.descripcion}</p>
         </div>
     `).join('');
-}
+}// Segundo cambio para el proyecto de Diamantium
