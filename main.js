@@ -219,3 +219,4 @@ function cargarPanelAdmin() {
         </div>
     `).join('');
 }// Segundo cambio para el proyecto de Diamantium
+// Tercer cambio de prueba para el proyecto diamantium
