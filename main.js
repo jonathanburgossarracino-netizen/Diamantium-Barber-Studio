@@ -1,4 +1,10 @@
+// Conexión con Supabase
+const SUPABASE_URL = 'https://rtdifbjwlrjorocrarro.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Dl8WO0tcPPpLqfu72b2-QQ_sKrnOw-4';
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let usuarioActual = null;
+let servicioTemp = {}; // <--- Esta es la variable
 
 // 📱 CONFIGURA AQUÍ TU NÚMERO DE WHATSAPP DE ADMINISTRADOR (10 DÍGITOS)
 const TELEFONO_ADMIN = "9381370804"; 
@@ -10,33 +16,51 @@ function mostrarSeccion(idSeccion) {
     document.getElementById(idSeccion).classList.remove('hidden');
 }
 
-// Obtener todas las citas globales guardadas
-function obtenerTodasLasCitas() {
-    return JSON.parse(localStorage.getItem('todas_las_citas_diamantium')) || [];
+// Obtener todas las citas directamente desde Supabase
+async function obtenerTodasLasCitas() {
+  const { data, error } = await supabaseClient
+    .from('citas')
+    .select('*');
+
+  if (error) {
+    console.error('Error al cargar citas de Supabase:', error.message);
+    return [];
+  }
+  return data || [];
 }
 
 // 1. Registro / Login
 document.getElementById('registerForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const nombre = document.getElementById('nombre').value;
-    const telefono = document.getElementById('telefono').value;
-    const pin = document.getElementById('pin').value;
-
-    if (telefono.length !== 10) return alert('Ingresa un teléfono válido a 10 dígitos.');
-    if (pin.length !== 4) return alert('El PIN debe ser de 4 dígitos.');
-
+    
+    const nombre = document.getElementById('nombre').value.trim();
+    const telefono = document.getElementById('telefono').value.trim();
+    const pin = document.getElementById('pin').value.trim();
+    
+    if (telefono.length !== 10) {
+        alert('Ingresa un teléfono válido a 10 dígitos.');
+        return;
+    }
+    
+    if (pin.length !== 4) {
+        alert('El PIN debe ser de 4 dígitos.');
+        return;
+    }
     usuarioActual = { nombre, telefono };
     document.getElementById('subtitulo').innerText = `¡Hola, ${nombre}!`;
-
-    // 🔒 CONTROL DE ACCESO: Si el teléfono coincide con el del Admin, muestra el botón
+    
+    // Control de acceso de administrador
     const btnAdmin = document.getElementById('btn-menu-admin');
     if (telefono === TELEFONO_ADMIN) {
         btnAdmin.classList.remove('hidden');
     } else {
         btnAdmin.classList.add('hidden');
     }
+   
+    usuarioActual = { nombre, telefono };
+    document.getElementById('subtitulo').innerText = `¡Hola, ${nombre}!`;
 
-    mostrarSeccion('step-menu');
+ mostrarSeccion('step-menu');
 });
 
 // NAVEGACIÓN
@@ -76,9 +100,11 @@ document.getElementById('btn-next-service').addEventListener('click', function()
     
     if (!servicioSeleccionado) return alert('Por favor selecciona un servicio.');
 
-    localStorage.setItem('temp_servicio', servicioSeleccionado.value);
-    localStorage.setItem('temp_precio', servicioSeleccionado.getAttribute('data-precio'));
-    localStorage.setItem('temp_descripcion', descripcion || 'Sin detalles especificados');
+   servicioTemp = {
+    servicio: servicioSeleccionado.value,
+    precio: parseFloat(servicioSeleccionado.getAttribute('data-precio')),
+    descripcion: descripcion || 'Sin detalles especificados'
+  };
 
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('fecha').setAttribute('min', hoy);
@@ -87,10 +113,10 @@ document.getElementById('btn-next-service').addEventListener('click', function()
 });
 
 // 3. Validar Horarios Ocupados al Cambiar Fecha
-document.getElementById('fecha').addEventListener('change', function() {
+document.getElementById('fecha').addEventListener('change', async function() {
     const fechaSeleccionada = this.value;
     const selectHora = document.getElementById('hora');
-    const citasGlobales = obtenerTodasLasCitas();
+   const citasGlobales = await obtenerTodasLasCitas();
 
     const horasOcupadas = citasGlobales
         .filter(c => c.fecha === fechaSeleccionada)
@@ -112,26 +138,30 @@ document.getElementById('fecha').addEventListener('change', function() {
 });
 
 // 4. Confirmar Reserva
-document.getElementById('btn-finish').addEventListener('click', function() {
+document.getElementById('btn-finish').addEventListener('click', async function(e) {
     const fecha = document.getElementById('fecha').value;
     const hora = document.getElementById('hora').value;
 
     if (!fecha || !hora) return alert('Por favor selecciona una fecha y hora disponible.');
 
-    const nuevaCita = {
-        id: Date.now(),
-        cliente: usuarioActual.nombre,
-        telefono: usuarioActual.telefono,
-        servicio: localStorage.getItem('temp_servicio'),
-        precio: parseFloat(localStorage.getItem('temp_precio')),
-        descripcion: localStorage.getItem('temp_descripcion'),
-        fecha: fecha,
-        hora: hora
-    };
+  const nuevaCita = {
+    id: Date.now(),
+    cliente_nombre: usuarioActual.nombre,
+    cliente_telefono: usuarioActual.telefono,
+    servicio: servicioTemp.servicio,
+    precio: servicioTemp.precio,
+    descripcion: servicioTemp.descripcion,
+    fecha_cita: fecha,
+    hora_cita: hora
+};
+   const { data, error } = await supabaseClient
+    .from('citas')
+    .insert([nuevaCita]);
 
-    let citasGlobales = obtenerTodasLasCitas();
-    citasGlobales.unshift(nuevaCita);
-    localStorage.setItem('todas_las_citas_diamantium', JSON.stringify(citasGlobales));
+  if (error) {
+    console.error('Error al guardar en Supabase:', error.message);
+    return alert('Hubo un error al guardar la cita.');
+  }
 
     alert(`¡Cita Confirmada!\n\nServicio: ${nuevaCita.servicio}\nFecha: ${fecha} a las ${hora}`);
     
