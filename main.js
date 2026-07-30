@@ -30,7 +30,7 @@ async function obtenerTodasLasCitas() {
 }
 
 // 1. Registro / Login
-document.getElementById('registerForm').addEventListener('submit', function(e) {
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const nombre = document.getElementById('nombre').value.trim();
@@ -48,7 +48,20 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
     }
     usuarioActual = { nombre, telefono };
     document.getElementById('subtitulo').innerText = `¡Hola, ${nombre}!`;
-    
+   
+    const { error } = await supabase
+        .from('usuarios')
+        .insert([{ nombre: nombre, telefono: telefono, pin: pin }]);
+
+    if (error) {
+        console.error('Error al registrar:', error.message);
+        alert('Hubo un error al guardar el usuario en la base de datos.');
+        return;
+    }
+
+    alert('¡Registro exitoso y guardado en la base de datos!');
+});
+
     // Control de acceso de administrador
     const btnAdmin = document.getElementById('btn-menu-admin');
     if (telefono === TELEFONO_ADMIN) {
