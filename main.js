@@ -2,12 +2,12 @@
 const SUPABASE_URL = 'https://rtdifbjwlrjorocrarro.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Dl8WO0tcPPpLqfu72b2-QQ_sKrnOw-4';
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let usuarioActual = null;
-let servicioTemp = {}; // <--- Esta es la variable
+let servicioTemp = {}; 
 
-// 📱 CONFIGURA AQUÍ TU NÚMERO DE WHATSAPP DE ADMINISTRADOR (10 DÍGITOS)
-const TELEFONO_ADMIN = "9381370804"; 
+// CONFIGURA AQUÍ TU NÚMERO DE WHATSAPP DE ADMINISTRADOR (10 DÍGITOS)
+const TELEFONO_ADMIN = "9381370804";
 const PIN_ADMIN = "1234";
 
 function mostrarSeccion(idSeccion) {
@@ -18,62 +18,70 @@ function mostrarSeccion(idSeccion) {
 
 // Obtener todas las citas directamente desde Supabase
 async function obtenerTodasLasCitas() {
-  const { data, error } = await supabaseClient
-    .from('citas')
-    .select('*');
+    const { data, error } = await db
+        .from('citas')
+        .select('*');
 
-  if (error) {
-    console.error('Error al cargar citas de Supabase:', error.message);
-    return [];
-  }
-  return data || [];
+    if (error) {
+        console.error('Error al cargar citas de Supabase:', error.message);
+        return [];
+    }
+    return data || [];
 }
 
 // 1. Registro / Login
 document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const nombre = document.getElementById('nombre').value.trim();
     const telefono = document.getElementById('telefono').value.trim();
     const pin = document.getElementById('pin').value.trim();
-    
+
     if (telefono.length !== 10) {
         alert('Ingresa un teléfono válido a 10 dígitos.');
         return;
     }
-    
+
     if (pin.length !== 4) {
         alert('El PIN debe ser de 4 dígitos.');
         return;
     }
-    usuarioActual = { nombre, telefono };
-    document.getElementById('subtitulo').innerText = `¡Hola, ${nombre}!`;
-   
-    const { error } = await supabase
-        .from('usuarios')
-        .insert([{ nombre: nombre, telefono: telefono, pin: pin }]);
 
-    if (error) {
-        console.error('Error al registrar:', error.message);
-        alert('Hubo un error al guardar el usuario en la base de datos.');
-        return;
+    const { data: usuarioExistente, error: errorBusqueda } = await db
+        .from('usuarios')
+        .select('*')
+        .eq('telefono', telefono)
+        .maybeSingle();
+
+    if (usuarioExistente) {
+        if (usuarioExistente.pin !== pin) {
+            alert('PIN incorrecto. Verifica tus datos.');
+            return;
+        }
+        usuarioActual = { nombre: usuarioExistente.nombre, telefono: usuarioExistente.telefono };
+        document.getElementById('subtitulo').innerText = `¡Hola, ${usuarioExistente.nombre}!`;
+    } else {
+        const { error: errorInsert } = await db
+            .from('usuarios')
+            .insert([{ nombre: nombre, telefono: telefono, pin: pin }]);
+
+        if (errorInsert) {
+            console.error('Error al registrar:', errorInsert.message);
+            alert('Hubo un error al guardar el usuario en la base de datos.');
+            return;
+        }
+        usuarioActual = { nombre, telefono };
+        document.getElementById('subtitulo').innerText = `¡Hola, ${nombre}!`;
     }
 
-    alert('¡Registro exitoso y guardado en la base de datos!');
-});
-
-    // Control de acceso de administrador
     const btnAdmin = document.getElementById('btn-menu-admin');
     if (telefono === TELEFONO_ADMIN) {
         btnAdmin.classList.remove('hidden');
     } else {
         btnAdmin.classList.add('hidden');
     }
-   
-    usuarioActual = { nombre, telefono };
-    document.getElementById('subtitulo').innerText = `¡Hola, ${nombre}!`;
 
- mostrarSeccion('step-menu');
+    mostrarSeccion('step-menu');
 });
 
 // NAVEGACIÓN
@@ -83,7 +91,6 @@ document.getElementById('btn-menu-historial').addEventListener('click', () => {
     mostrarSeccion('step-history');
 });
 
-// Acceso Privado del Barbero (Admin)
 document.getElementById('btn-menu-admin').addEventListener('click', () => {
     const pinIngresado = prompt("Ingresa la clave de Administrador/Barbero:");
     if (pinIngresado === PIN_ADMIN) {
@@ -110,18 +117,18 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 document.getElementById('btn-next-service').addEventListener('click', function() {
     const servicioSeleccionado = document.querySelector('input[name="servicio"]:checked');
     const descripcion = document.getElementById('descripcionCorte').value.trim();
-    
+
     if (!servicioSeleccionado) return alert('Por favor selecciona un servicio.');
 
-   servicioTemp = {
-    servicio: servicioSeleccionado.value,
-    precio: parseFloat(servicioSeleccionado.getAttribute('data-precio')),
-    descripcion: descripcion || 'Sin detalles especificados'
-  };
+    servicioTemp = {
+        servicio: servicioSeleccionado.value,
+        precio: parseFloat(servicioSeleccionado.getAttribute('data-precio')),
+        descripcion: descripcion || 'Sin detalles especificados'
+    };
 
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('fecha').setAttribute('min', hoy);
-    
+
     mostrarSeccion('step-datetime');
 });
 
@@ -129,15 +136,15 @@ document.getElementById('btn-next-service').addEventListener('click', function()
 document.getElementById('fecha').addEventListener('change', async function() {
     const fechaSeleccionada = this.value;
     const selectHora = document.getElementById('hora');
-   const citasGlobales = await obtenerTodasLasCitas();
+    const citasGlobales = await obtenerTodasLasCitas();
 
     const horasOcupadas = citasGlobales
-        .filter(c => c.fecha === fechaSeleccionada)
-        .map(c => c.hora);
+        .filter(c => c.fecha_cita === fechaSeleccionada)
+        .map(c => c.hora_cita);
 
     Array.from(selectHora.options).forEach(option => {
         if (!option.value) return;
-        
+
         if (horasOcupadas.includes(option.value)) {
             option.disabled = true;
             option.textContent = `${option.value} - (OCUPADO 🚫)`;
@@ -157,27 +164,28 @@ document.getElementById('btn-finish').addEventListener('click', async function(e
 
     if (!fecha || !hora) return alert('Por favor selecciona una fecha y hora disponible.');
 
-  const nuevaCita = {
-    id: Date.now(),
-    cliente_nombre: usuarioActual.nombre,
-    cliente_telefono: usuarioActual.telefono,
-    servicio: servicioTemp.servicio,
-    precio: servicioTemp.precio,
-    descripcion: servicioTemp.descripcion,
-    fecha_cita: fecha,
-    hora_cita: hora
-};
-   const { data, error } = await supabaseClient
-    .from('citas')
-    .insert([nuevaCita]);
+    const nuevaCita = {
+        id: Date.now(),
+        cliente_nombre: usuarioActual.nombre,
+        cliente_telefono: usuarioActual.telefono,
+        servicio: servicioTemp.servicio,
+        precio: servicioTemp.precio,
+        descripcion: servicioTemp.descripcion,
+        fecha_cita: fecha,
+        hora_cita: hora
+    };
 
-  if (error) {
-    console.error('Error al guardar en Supabase:', error.message);
-    return alert('Hubo un error al guardar la cita.');
-  }
+    const { error } = await db
+        .from('citas')
+        .insert([nuevaCita]);
+
+    if (error) {
+        console.error('Error al guardar en Supabase:', error.message);
+        return alert('Hubo un error al guardar la cita.');
+    }
 
     alert(`¡Cita Confirmada!\n\nServicio: ${nuevaCita.servicio}\nFecha: ${fecha} a las ${hora}`);
-    
+
     document.getElementById('descripcionCorte').value = "";
     document.getElementById('fecha').value = "";
     document.getElementById('hora').value = "";
@@ -185,10 +193,10 @@ document.getElementById('btn-finish').addEventListener('click', async function(e
 });
 
 // Historial Personal del Cliente
-function cargarHistorialCliente() {
+async function cargarHistorialCliente() {
     const container = document.getElementById('citas-container');
-    const citasGlobales = obtenerTodasLasCitas();
-    const misCitas = citasGlobales.filter(c => c.telefono === usuarioActual.telefono);
+    const citasGlobales = await obtenerTodasLasCitas();
+    const misCitas = citasGlobales.filter(c => c.cliente_telefono === usuarioActual.telefono);
 
     if (misCitas.length === 0) {
         container.innerHTML = '<p style="color: #888; text-align: center;">No tienes citas agendadas.</p>';
@@ -198,7 +206,7 @@ function cargarHistorialCliente() {
     container.innerHTML = misCitas.map(c => `
         <div class="history-card">
             <h4>${c.servicio}</h4>
-            <p>📅 <strong>Fecha:</strong> ${c.fecha} - ${c.hora}</p>
+            <p>📅 <strong>Fecha:</strong> ${c.fecha_cita} - ${c.hora_cita}</p>
             <p>📝 <strong>Detalles:</strong> ${c.descripcion}</p>
             <p>💵 <strong>Precio:</strong> $${c.precio} MXN</p>
         </div>
@@ -206,14 +214,13 @@ function cargarHistorialCliente() {
 }
 
 // Cargar Panel Privado de Administrador
-function cargarPanelAdmin() {
+async function cargarPanelAdmin() {
     const container = document.getElementById('admin-citas-container');
-    const citasGlobales = obtenerTodasLasCitas();
-    
-    const mesActual = new Date().toISOString().slice(0, 7);
+    const citasGlobales = await obtenerTodasLasCitas();
 
-    const citasDelMes = citasGlobales.filter(c => c.fecha.startsWith(mesActual));
-    const totalGanancias = citasDelMes.reduce((sum, c) => sum + c.precio, 0);
+    const mesActual = new Date().toISOString().slice(0, 7);
+    const citasDelMes = citasGlobales.filter(c => c.fecha_cita && c.fecha_cita.startsWith(mesActual));
+    const totalGanancias = citasDelMes.reduce((sum, c) => sum + (c.precio || 0), 0);
 
     document.getElementById('stat-citas-mes').innerText = citasDelMes.length;
     document.getElementById('stat-ingresos-mes').innerText = `$${totalGanancias} MXN`;
@@ -226,10 +233,9 @@ function cargarPanelAdmin() {
     container.innerHTML = citasGlobales.map(c => `
         <div class="history-card">
             <h4>${c.servicio} - $${c.precio} MXN</h4>
-            <p>👤 <strong>Cliente:</strong> ${c.cliente} (${c.telefono})</p>
-            <p>📅 <strong>Agenda:</strong> ${c.fecha} @ ${c.hora}</p>
+            <p>👤 <strong>Cliente:</strong> ${c.cliente_nombre} (${c.cliente_telefono})</p>
+            <p>📅 <strong>Agenda:</strong> ${c.fecha_cita} @ ${c.hora_cita}</p>
             <p>✂️ <strong>Corte solicitado:</strong> ${c.descripcion}</p>
         </div>
     `).join('');
-}// Segundo cambio para el proyecto de Diamantium
-// Tercer cambio de prueba para el proyecto diamantium
+}
